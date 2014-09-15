@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright 2014: Lithium Technologies, Inc
-# License: Restricted
+# License: Apache License v2.0
 # Author(s):
 #   - Paul Allen (paul.allen@lithium.com)
 # Example Usage:
