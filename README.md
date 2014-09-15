@@ -17,7 +17,7 @@ by Amazon AWS. Should you make a mistake and run on standard Amazon Linux, the n
 Secondly, the nat instance must run within an IAM role which must have permissions to modify vairous VPC
 objects such as route tables. Here is the basic IAM role permissions set necessary for the HA-NAT. Resouce
 is called out as [ "arn:aws:ec2:::*" ] simply because the vpc object IDS are unknown:
-'''
+```
 {
   "Statement": [
     {
@@ -40,7 +40,7 @@ is called out as [ "arn:aws:ec2:::*" ] simply because the vpc object IDS are unk
     }
   ]
 }
-'''
+```
 
 #### Details
 The basic idea is as follows:
