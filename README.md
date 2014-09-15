@@ -11,6 +11,37 @@ From the moment one is lost, NATing from that AZ will be down until one of the o
 takes over the routing. This happens quickly, so even for the affected AZ a lost NAT will have little
 affect. The other AZ's will remain unaffected and thus the "system" is still up.
 
+#### IAM Requirements
+There are a few requirements for this to run correctly. Firstly, you must utilize the NAT AMI provided
+by Amazon AWS. Should you make a mistake and run on standard Amazon Linux, the nat will simply not work.
+Secondly, the nat instance must run within an IAM role which must have permissions to modify vairous VPC
+objects such as route tables. Here is the basic IAM role permissions set necessary for the HA-NAT. Resouce
+is called out as [ "arn:aws:ec2:::*" ] simply because the vpc object IDS are unknown:
+'''
+{
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Resource": [
+          "arn:aws:ec2:::*"
+      ],
+      "Action": [ 
+          "ec2:DescribeAvailabilityZones",
+          "ec2:ModifyInstanceAttribute",
+          "ec2:DescribeInstanceAttribute",
+          "ec2:DescribeRegions",
+          "ec2:ModifyInstanceAttribute",
+          "ec2:ReplaceRoute",
+          "ec2:CreateRoute",
+          "ec2:ReplaceRouteTableAssociation",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeRouteTables"
+      ]
+    }
+  ]
+}
+'''
+
 #### Details
 The basic idea is as follows:
   1. The NAT instance running this script will operate only on its own VPC.
