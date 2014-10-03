@@ -18,7 +18,7 @@ import subprocess
 import socket
 import time
 
-version = "0.1.4"
+version = "0.1.5"
 
 ## globals for caching
 MY_AZ = None
@@ -243,8 +243,9 @@ if len(options.privateSubnets) > 0 and len(options.privateSubnets.split(',')) > 
 
 while True:
     try:
-      main()
+        ensureSubnetRoutes()
+        main()
     except Exception as e:
-      log(str(e))
+        log(str(e))
     log("sleeping %d before rechecking" % (int(options.monitorInterval)))
     time.sleep(int(options.monitorInterval))
