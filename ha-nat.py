@@ -20,7 +20,6 @@ from boto.vpc import VPCConnection
 import subprocess
 import socket
 import time
-import inspect
 
 version = "0.1.5"
 
