@@ -37,7 +37,7 @@ def parseArgs():
     parser.add_option("--env",               dest="env",            default="dev",                          help="The environment in which this is running")
     parser.add_option("--monitor-interval",  dest="monitorInterval",default="300",                          help="The frequency in seconds of which to check the routes [default: %default]")
     parser.add_option("--private-subnets",   dest="privateSubnets", default="",                             help="A CSV of private subnet ids to ensure a 0.0.0.0/0 route exists from each subnet to the NAT instance")
-    parser.add_option("--eips",              dest="eips",           default="",                             help="A CSV of EIPs to assign to the NATs.")
+    parser.add_option("--eips",              dest="eips",           default=None,                             help="A CSV of EIPs to assign to the NATs.")
     parser.add_option("--create-eips",       dest="createEips",     default=False, action="store_true",     help="Create EIPs to assign if there are none available.")
     parser.add_option("--log-file",          dest="logFile",        default="/var/log/ha-nat.log",          help="The log file in which to dump debug information [default: %default]")
     return parser.parse_args()
@@ -217,7 +217,7 @@ def main():
     ##   4) if there is a blackhole in replace it with this instnace
     ##   5) if there is no blackhole in this AZ, replace only if the registered instance
     ##      is NOT in this AZ
-    if options.createEips or options.eips != "":
+    if options.createEips or (options.eips not None and options.eips != ""):
         log("we have been asked to handle eips - handling now")
         ## check if we have an EIP assigned to us
         filters = {'instance-id': getInstanceId()}
@@ -230,11 +230,11 @@ def main():
             if options.eips != "":
                 log("eips have been specified")
                 for eip_assigned in options.eips.split(','):
+                    if eip_assigned == "":
+                        continue
                     log(" - searching for %s" % eip_assigned)
                     try:
-                        addr_array = []
-                        addr_array.append(eip_assigned)
-                        address = EC2.get_all_addresses(addresses = addr_array)[0]
+                        address = EC2.get_all_addresses(addresses = [eip_assigned])[0]
                         log(" - found address: %s" % (address))
                     except EC2ResponseError:
                         log("ERROR: address not found in account %s" % eip_assigned)
@@ -246,6 +246,9 @@ def main():
                         log("found matching usable ip %s - associating to this instance [%s]" % (eip_assigned, getInstanceId()))
                         EC2.associate_address(instance_id = getInstanceId(), public_ip = eip_assigned)
                         have_eip = True
+                ## we should have an eip here now, if not lets raise an exception
+                raise Exception("Expected to have an EIP at this point, but do not")
+
             if have_eip == False and options.createEips:
                 ## we still dont have an EIP, but we are allowed to create them, so lets do that
                 ## first, we will just check if there is an empty one we can use
@@ -264,13 +267,12 @@ def main():
                     log("creating new IP address")
                     try:
                         new_address = EC2.allocate_address()
-                        log("associating new ip address [%s] with instance_id [%s]" % (address.public_ip, getInstanceId()))
+                        log("associating new ip address [%s] with instance_id [%s]" % (new_address.public_ip, getInstanceId()))
                         EC2.associate_address(instance_id = getInstanceId(), public_ip = new_address.public_ip)
                         have_eip = True
                     except:
                         log("ERROR: cannot allocate and assign a new IP address")
-
-            log("continuing on now")
+            log("EIPs have been handled to the best of our ability - continuing on now")
         else:
             have_eip = True
         
