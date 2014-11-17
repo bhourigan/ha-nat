@@ -36,7 +36,7 @@ is called out as [ "arn:aws:ec2:::*" ] simply because the vpc object IDS are unk
           "ec2:ReplaceRouteTableAssociation",
           "ec2:DescribeSubnets",
           "ec2:DescribeRouteTables",
-	  "ec2:AssociateAddress",
+          "ec2:AssociateAddress",
           "ec2:DescribeAddresses",
           "ec2:DisassociateAddress"
       ]
