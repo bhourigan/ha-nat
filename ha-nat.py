@@ -6,9 +6,12 @@
 #   - Paul Allen (paul.allen@lithium.com)
 # Example Usage:
 #   - ./ha-nat.py --log-file /var/log/ha-nat.log --monitor-interval 15 --private-subnets "subnet-30fe0b55,subnet-eeb782a8"
+#   - ./ha-nat.py --log-file /var/log/ha-nat.log --monitor-interval 15 --private-subnets "subnet-30fe0b55,subnet-eeb782a8" --eips "1.2.3.4,10.20.30.40,99.88.77.66"
+#   - ./ha-nat.py --log-file /var/log/ha-nat.log --monitor-interval 15 --private-subnets "subnet-30fe0b55,subnet-eeb782a8" --create-eips
 #
 import boto
 import boto.ec2
+from boto.exception import EC2ResponseError
 import datetime
 import os
 import sys
@@ -18,7 +21,7 @@ import subprocess
 import socket
 import time
 
-version = "0.1.5"
+version = "0.1.6"
 
 ## globals for caching
 MY_AZ = None
@@ -34,6 +37,8 @@ def parseArgs():
     parser.add_option("--env",               dest="env",            default="dev",                          help="The environment in which this is running")
     parser.add_option("--monitor-interval",  dest="monitorInterval",default="300",                          help="The frequency in seconds of which to check the routes [default: %default]")
     parser.add_option("--private-subnets",   dest="privateSubnets", default="",                             help="A CSV of private subnet ids to ensure a 0.0.0.0/0 route exists from each subnet to the NAT instance")
+    parser.add_option("--eips",              dest="eips",           default=None,                           help="A CSV of EIPs to assign to the NATs.")
+    parser.add_option("--create-eips",       dest="createEips",     default=False, action="store_true",     help="Create EIPs to assign if there are none available.")
     parser.add_option("--log-file",          dest="logFile",        default="/var/log/ha-nat.log",          help="The log file in which to dump debug information [default: %default]")
     return parser.parse_args()
 
@@ -199,11 +204,84 @@ def ensureSubnetRoutes():
 
 def main():
     ## this should do the following
-    ##   1) ensure a private subnet route exists pointing to 0.0.0.0/0
-    ##   2) ensure source/destination checks are disabled
-    ##   3) if there is a blackhole in replace it with this instnace
-    ##   4) if there is no blackhole in this AZ, replace only if the registered instance
+    ##   1) if eips are called out or createEips is enabled, ensure we have an EIP assigned to us
+    ##      a) if we do not
+    ##         i) look through the list assinged
+    ##        ii) if we find one unassigned, take it
+    ##       iii) if we do not find one unassigned, check if we are allowed to create EIPs
+    ##        iv) if we are allowed to create EIPs, create one and assign it to ourself
+    ##         v) if we are not allowed to create EIPs, log an error and continue to try again later
+    ##       b) if we do have an EIP, move on
+    ##   2) ensure a private subnet route exists pointing to 0.0.0.0/0
+    ##   3) ensure source/destination checks are disabled
+    ##   4) if there is a blackhole in replace it with this instnace
+    ##   5) if there is no blackhole in this AZ, replace only if the registered instance
     ##      is NOT in this AZ
+    if options.createEips or (options.eips not None and options.eips != ""):
+        log("we have been asked to handle eips - handling now")
+        ## check if we have an EIP assigned to us
+        filters = {'instance-id': getInstanceId()}
+        addresses = EC2.get_all_addresses(filters = filters)
+        log("got addresses: %s" % addresses)
+        have_eip = False
+        if not addresses:
+            ## we don't have an EIP
+            log("no EIP assigned to this instance - looking for EIPS")
+            if options.eips != "":
+                log("eips have been specified")
+                for eip_assigned in options.eips.split(','):
+                    if eip_assigned == "":
+                        continue
+                    log(" - searching for %s" % eip_assigned)
+                    try:
+                        address = EC2.get_all_addresses(addresses = [eip_assigned])[0]
+                        log(" - found address: %s" % (address))
+                    except EC2ResponseError:
+                        log("ERROR: address not found in account %s" % eip_assigned)
+                        continue
+                    ## we only care about addresses that are not associated
+                    if address.association_id:
+                        continue
+                    if address.public_ip == eip_assigned:
+                        log("found matching usable ip %s - associating to this instance [%s]" % (eip_assigned, getInstanceId()))
+                        EC2.associate_address(instance_id = getInstanceId(), public_ip = eip_assigned)
+                        have_eip = True
+                ## we should have an eip here now, if not lets raise an exception
+                raise Exception("Expected to have an EIP at this point, but do not")
+
+            if have_eip == False and options.createEips:
+                ## we still dont have an EIP, but we are allowed to create them, so lets do that
+                ## first, we will just check if there is an empty one we can use
+                addresses = EC2.get_all_addresses()
+                for address in addresses:
+                    if address.association_id:
+                        ## we only care about unassociated ip addresses
+                        continue
+                    ## if we made it here, lets just take it and exit
+                    log("found an IP address - associating [%s] with instance_id [%s]" % (address.public_ip, getInstanceId()))
+                    EC2.associate_address(instance_id = getInstanceId(), public_ip = address.public_ip)
+                    have_eip = True
+                    break
+                if have_eip == False:
+                    ## we still have no EIP - time to create one
+                    log("creating new IP address")
+                    try:
+                        new_address = EC2.allocate_address()
+                        log("associating new ip address [%s] with instance_id [%s]" % (new_address.public_ip, getInstanceId()))
+                        EC2.associate_address(instance_id = getInstanceId(), public_ip = new_address.public_ip)
+                        have_eip = True
+                    except:
+                        log("ERROR: cannot allocate and assign a new IP address")
+            log("EIPs have been handled to the best of our ability - continuing on now")
+        else:
+            have_eip = True
+        
+        if have_eip == False:
+            sendEvent("Cannot assign EIP", "instance [%s] is unable to assign an eip although asked to do so" % (getInstanceId()), options)
+            raise Exception('Unable to assign requested EIP - not continuing')
+
+    log("continuing to ensureSubnetRoutes()")
+    ensureSubnetRoutes()
     for route_table in findBlackholes():
         log("main | checking route table: %s" % route_table.id)
         if route_table.id == None:
@@ -243,9 +321,8 @@ if len(options.privateSubnets) > 0 and len(options.privateSubnets.split(',')) > 
 
 while True:
     try:
-        ensureSubnetRoutes()
         main()
     except Exception as e:
-        log(str(e))
+        log("ERROR: %s" % str(e))
     log("sleeping %d before rechecking" % (int(options.monitorInterval)))
     time.sleep(int(options.monitorInterval))
