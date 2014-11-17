@@ -37,7 +37,7 @@ def parseArgs():
     parser.add_option("--env",               dest="env",            default="dev",                          help="The environment in which this is running")
     parser.add_option("--monitor-interval",  dest="monitorInterval",default="300",                          help="The frequency in seconds of which to check the routes [default: %default]")
     parser.add_option("--private-subnets",   dest="privateSubnets", default="",                             help="A CSV of private subnet ids to ensure a 0.0.0.0/0 route exists from each subnet to the NAT instance")
-    parser.add_option("--eips",              dest="eips",           default=None,                             help="A CSV of EIPs to assign to the NATs.")
+    parser.add_option("--eips",              dest="eips",           default=None,                           help="A CSV of EIPs to assign to the NATs.")
     parser.add_option("--create-eips",       dest="createEips",     default=False, action="store_true",     help="Create EIPs to assign if there are none available.")
     parser.add_option("--log-file",          dest="logFile",        default="/var/log/ha-nat.log",          help="The log file in which to dump debug information [default: %default]")
     return parser.parse_args()

@@ -35,7 +35,10 @@ is called out as [ "arn:aws:ec2:::*" ] simply because the vpc object IDS are unk
           "ec2:CreateRoute",
           "ec2:ReplaceRouteTableAssociation",
           "ec2:DescribeSubnets",
-          "ec2:DescribeRouteTables"
+          "ec2:DescribeRouteTables",
+	  "ec2:AssociateAddress",
+          "ec2:DescribeAddresses",
+          "ec2:DisassociateAddress"
       ]
     }
   ]
@@ -69,7 +72,10 @@ the options are straightforward.
     * i.e. --private-subnets "subnet-12345678,subnet-abcdefgh,subnet-87654321" ##To check every 1 minute
   1. --env <environment>
     * i.e. --env "dev"
-
+  1. --eips <CSV of EIPs to assign to the NATs>
+    * i.e. --eips 1.2.3.4,10.20.30.40,9.8.7.6
+  1. --create-eips <flag to indicate the nat is allowed to create eips if they are missing>
+    * i.e. --create-eips with no --eips will simply use/create eips as needed. if they are deleted, new ones will be created and used
 i.e.
 
   * ./ha-nat.py --log-file "/var/log/ha-nat" --monitor-interval 20 --env "dev" --private-subnets "subnet-12345678,subnet-abcdefgh"
