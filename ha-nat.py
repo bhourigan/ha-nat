@@ -217,7 +217,7 @@ def main():
     ##   4) if there is a blackhole in replace it with this instnace
     ##   5) if there is no blackhole in this AZ, replace only if the registered instance
     ##      is NOT in this AZ
-    if options.createEips or (options.eips not None and options.eips != ""):
+    if options.createEips or (options.eips != None and options.eips != ""):
         log("we have been asked to handle eips - handling now")
         ## check if we have an EIP assigned to us
         filters = {'instance-id': getInstanceId()}
