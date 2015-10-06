@@ -19,27 +19,43 @@ objects such as route tables. Here is the basic IAM role permissions set necessa
 is called out as [ "arn:aws:ec2:::*" ] simply because the vpc object IDS are unknown:
 ```
 {
+  "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "Stmt1436895015000",
       "Effect": "Allow",
-      "Resource": [
-          "arn:aws:ec2:::*"
+      "Action": [
+        "ec2:DescribeAvailabilityZones",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:DescribeInstanceAttribute",
+        "ec2:DescribeRegions",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:ReplaceRoute",
+        "ec2:CreateRoute",
+        "ec2:ReplaceRouteTableAssociation",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeRouteTables",
+        "ec2:AssociateAddress",
+        "ec2:DescribeAddresses",
+        "ec2:DisassociateAddress",
+        "ec2:DescribeInstances"
       ],
-      "Action": [ 
-          "ec2:DescribeAvailabilityZones",
-          "ec2:ModifyInstanceAttribute",
-          "ec2:DescribeInstanceAttribute",
-          "ec2:DescribeRegions",
-          "ec2:ModifyInstanceAttribute",
-          "ec2:ReplaceRoute",
-          "ec2:CreateRoute",
-          "ec2:ReplaceRouteTableAssociation",
-          "ec2:DescribeSubnets",
-          "ec2:DescribeRouteTables",
-          "ec2:AssociateAddress",
-          "ec2:DescribeAddresses",
-          "ec2:DisassociateAddress"
-      ]
+      "Resource": [
+        "*"
+      ],
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "ec2:ResourceTag/aws:autoscaling:groupName": "<autoscaling group name>"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeRouteTables"
+      ],
+      "Resource": "*"
     }
   ]
 }
