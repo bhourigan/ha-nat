@@ -244,7 +244,7 @@ def main():
                         continue
                     if address.public_ip == eip_assigned:
                         log("found matching usable ip %s - associating to this instance [%s]" % (eip_assigned, getInstanceId()))
-                        EC2.associate_address(instance_id = getInstanceId(), public_ip = eip_assigned)
+                        EC2.associate_address(instance_id = getInstanceId(), public_ip = eip_assigned, allocation_id = address.allocation_id)
                         have_eip = True
                 ## we should have an eip here now, if not lets raise an exception
                 raise Exception("Expected to have an EIP at this point, but do not")
