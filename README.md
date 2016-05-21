@@ -1,6 +1,7 @@
 # Highly Available NAT cluster
 
-This RPM package will ensure availability of a NAT instance when run in an autoscaling group.
+I'm sorry to say this probably won't work for you, this is a customized fork that meets specific
+requirements for a test environment.
 
 It can be used on a single NAT instance in a VPC, or in an HA configuration with 1 NAT per AZ in the VPC.
 
